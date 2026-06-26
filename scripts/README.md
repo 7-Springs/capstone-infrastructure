@@ -31,6 +31,8 @@ cd ~/src/capstone-infrastructure
 LOCAL_DEPLOY=1 ./scripts/test-and-deploy.sh
 ```
 
+When the script is run on the server and the Desktop PEM is not present, it automatically switches to local deploy mode as long as `~/src/capstone-backend` and `~/src/capstone-frontend` exist.
+
 On a fresh server, install Playwright's Chromium browser and required Linux packages before the Playwright suite:
 
 ```bash

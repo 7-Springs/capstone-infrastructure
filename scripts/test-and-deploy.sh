@@ -18,7 +18,7 @@ SKIP_PLAYWRIGHT="${SKIP_PLAYWRIGHT:-0}"
 INSTALL_PLAYWRIGHT="${INSTALL_PLAYWRIGHT:-1}"
 PLAYWRIGHT_WITH_DEPS="${PLAYWRIGHT_WITH_DEPS:-0}"
 SKIP_DEPLOY="${SKIP_DEPLOY:-0}"
-LOCAL_DEPLOY="${LOCAL_DEPLOY:-0}"
+LOCAL_DEPLOY="${LOCAL_DEPLOY:-}"
 SERVER_GIT_REF="${SERVER_GIT_REF:-origin/main}"
 
 KEY_COPY=""
@@ -46,9 +46,23 @@ require_dir() {
   fi
 }
 
+resolve_deploy_mode() {
+  if [[ -n "$LOCAL_DEPLOY" ]]; then
+    return
+  fi
+
+  if [[ ! -f "$DEPLOY_KEY" && -d "$BACKEND_DIR/.git" && -d "$FRONTEND_DIR/.git" ]]; then
+    LOCAL_DEPLOY=1
+    return
+  fi
+
+  LOCAL_DEPLOY=0
+}
+
 prepare_key() {
   if [[ ! -f "$DEPLOY_KEY" ]]; then
     printf 'Deploy key not found: %s\n' "$DEPLOY_KEY" >&2
+    printf 'If you are running this on the server, rerun with LOCAL_DEPLOY=1 or from a checkout that has local backend/frontend repos.\n' >&2
     exit 1
   fi
 
@@ -187,6 +201,7 @@ smoke_check() {
 main() {
   require_dir "$BACKEND_DIR"
   require_dir "$FRONTEND_DIR"
+  resolve_deploy_mode
 
   ensure_pushed "$BACKEND_DIR" "Backend"
   ensure_pushed "$FRONTEND_DIR" "Frontend"
