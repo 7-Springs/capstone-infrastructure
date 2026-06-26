@@ -14,7 +14,11 @@ FRONTEND_WEB_ROOT="${FRONTEND_WEB_ROOT:-/var/www/capstone-frontend/browser}"
 
 TEST_DATABASE_URL="${TEST_DATABASE_URL:-postgresql://capstone_test:capstone_test@localhost:5432/capstone_test?schema=public}"
 RUN_PLAYWRIGHT="${RUN_PLAYWRIGHT:-1}"
+SKIP_PLAYWRIGHT="${SKIP_PLAYWRIGHT:-0}"
+INSTALL_PLAYWRIGHT="${INSTALL_PLAYWRIGHT:-1}"
+PLAYWRIGHT_WITH_DEPS="${PLAYWRIGHT_WITH_DEPS:-0}"
 SKIP_DEPLOY="${SKIP_DEPLOY:-0}"
+LOCAL_DEPLOY="${LOCAL_DEPLOY:-0}"
 SERVER_GIT_REF="${SERVER_GIT_REF:-origin/main}"
 
 KEY_COPY=""
@@ -88,15 +92,24 @@ test_frontend() {
   run npm --prefix "$FRONTEND_DIR" test -- --runInBand
   run npm --prefix "$FRONTEND_DIR" run build
 
-  if [[ "$RUN_PLAYWRIGHT" == "1" ]]; then
+  if [[ "$SKIP_PLAYWRIGHT" == "1" || "$RUN_PLAYWRIGHT" != "1" ]]; then
+    printf 'Skipping Playwright because SKIP_PLAYWRIGHT=%s and RUN_PLAYWRIGHT=%s\n' "$SKIP_PLAYWRIGHT" "$RUN_PLAYWRIGHT"
+  else
     section "Playwright tests"
     (
       cd "$FRONTEND_DIR"
+      if [[ "$INSTALL_PLAYWRIGHT" == "1" ]]; then
+        if [[ "$PLAYWRIGHT_WITH_DEPS" == "1" ]]; then
+          printf '+ npx playwright install --with-deps chromium\n'
+          npx playwright install --with-deps chromium
+        else
+          printf '+ npx playwright install chromium\n'
+          npx playwright install chromium
+        fi
+      fi
       printf '+ npx playwright test\n'
       npx playwright test
     )
-  else
-    printf 'Skipping Playwright because RUN_PLAYWRIGHT=%s\n' "$RUN_PLAYWRIGHT"
   fi
 }
 
@@ -104,6 +117,31 @@ deploy_server() {
   if [[ "$SKIP_DEPLOY" == "1" ]]; then
     section "Skipping deploy"
     printf 'Verification passed. SKIP_DEPLOY=1, so production was not changed.\n'
+    return
+  fi
+
+  if [[ "$LOCAL_DEPLOY" == "1" ]]; then
+    section "Deploying on local server"
+    (
+      set -Eeuo pipefail
+      cd "$BACKEND_DIR"
+      git fetch origin main
+      git reset --hard "$SERVER_GIT_REF"
+      npm ci
+      npm run prisma:generate
+      npm run prisma:deploy
+      npm run build
+      pm2 reload ecosystem.config.cjs --update-env
+      pm2 save
+
+      cd "$FRONTEND_DIR"
+      git fetch origin main
+      git reset --hard "$SERVER_GIT_REF"
+      npm ci
+      npm run build
+      sudo mkdir -p "$FRONTEND_WEB_ROOT"
+      sudo rsync -av --delete dist/capstone-frontend/browser/ "$FRONTEND_WEB_ROOT/"
+    )
     return
   fi
 
