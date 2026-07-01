@@ -48,7 +48,7 @@ LOCAL_DEPLOY=1 SKIP_PLAYWRIGHT=1 ./scripts/test-and-deploy.sh
 Defaults:
 
 - `DEPLOY_USER=admin`
-- `DEPLOY_HOST=18.209.136.92`
+- `DEPLOY_HOST=98.95.137.137`
 - `DEPLOY_KEY=$HOME/Desktop/LightsailDefaultKey-us-east-1.pem`
 - `TEST_DATABASE_URL=postgresql://capstone_test:capstone_test@localhost:5432/capstone_test?schema=public`
 - `INSTALL_PLAYWRIGHT=1`

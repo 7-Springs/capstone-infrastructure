@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BACKEND_DIR="${BACKEND_DIR:-$ROOT_DIR/capstone-backend}"
 FRONTEND_DIR="${FRONTEND_DIR:-$ROOT_DIR/capstone-frontend}"
 
-DEPLOY_HOST="${DEPLOY_HOST:-18.209.136.92}"
+DEPLOY_HOST="${DEPLOY_HOST:-98.95.137.137}"
 DEPLOY_USER="${DEPLOY_USER:-admin}"
 DEPLOY_KEY="${DEPLOY_KEY:-$HOME/Desktop/LightsailDefaultKey-us-east-1.pem}"
 REMOTE_BACKEND_DIR="${REMOTE_BACKEND_DIR:-~/src/capstone-backend}"
