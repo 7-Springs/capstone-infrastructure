@@ -11,6 +11,7 @@ DEPLOY_KEY="${DEPLOY_KEY:-$HOME/Desktop/LightsailDefaultKey-us-east-1.pem}"
 REMOTE_BACKEND_DIR="${REMOTE_BACKEND_DIR:-~/src/capstone-backend}"
 REMOTE_FRONTEND_DIR="${REMOTE_FRONTEND_DIR:-~/src/capstone-frontend}"
 FRONTEND_WEB_ROOT="${FRONTEND_WEB_ROOT:-/var/www/capstone-frontend/browser}"
+UPLOAD_MAX_BODY_SIZE="${UPLOAD_MAX_BODY_SIZE:-25M}"
 
 TEST_DATABASE_URL="${TEST_DATABASE_URL:-postgresql://capstone_test:capstone_test@localhost:5432/capstone_test?schema=public}"
 RUN_PLAYWRIGHT="${RUN_PLAYWRIGHT:-1}"
@@ -138,6 +139,12 @@ deploy_server() {
     section "Deploying on local server"
     (
       set -Eeuo pipefail
+      if command -v nginx >/dev/null 2>&1; then
+        printf 'client_max_body_size %s;\n' "$UPLOAD_MAX_BODY_SIZE" | sudo tee /etc/nginx/conf.d/capstone-upload-size.conf >/dev/null
+        sudo nginx -t
+        sudo systemctl reload nginx
+      fi
+
       cd "$BACKEND_DIR"
       git fetch origin main
       git reset --hard "$SERVER_GIT_REF"
@@ -169,6 +176,12 @@ deploy_server() {
     -o StrictHostKeyChecking=no \
     "$DEPLOY_USER@$DEPLOY_HOST" \
     "set -Eeuo pipefail
+      if command -v nginx >/dev/null 2>&1; then
+        printf 'client_max_body_size %s;\n' '$UPLOAD_MAX_BODY_SIZE' | sudo tee /etc/nginx/conf.d/capstone-upload-size.conf >/dev/null
+        sudo nginx -t
+        sudo systemctl reload nginx
+      fi
+
       cd $REMOTE_BACKEND_DIR
       git fetch origin main
       git reset --hard $SERVER_GIT_REF
