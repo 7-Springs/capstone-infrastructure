@@ -139,9 +139,13 @@ deploy_server() {
     section "Deploying on local server"
     (
       set -Eeuo pipefail
-      if command -v nginx >/dev/null 2>&1; then
+      NGINX_BIN="$(command -v nginx || true)"
+      if [[ -z "$NGINX_BIN" && -x /usr/sbin/nginx ]]; then
+        NGINX_BIN=/usr/sbin/nginx
+      fi
+      if [[ -n "$NGINX_BIN" ]]; then
         printf 'client_max_body_size %s;\n' "$UPLOAD_MAX_BODY_SIZE" | sudo tee /etc/nginx/conf.d/capstone-upload-size.conf >/dev/null
-        sudo nginx -t
+        sudo "$NGINX_BIN" -t
         sudo systemctl reload nginx
       fi
 
@@ -176,9 +180,13 @@ deploy_server() {
     -o StrictHostKeyChecking=no \
     "$DEPLOY_USER@$DEPLOY_HOST" \
     "set -Eeuo pipefail
-      if command -v nginx >/dev/null 2>&1; then
+      NGINX_BIN=\"\$(command -v nginx || true)\"
+      if [[ -z \"\$NGINX_BIN\" && -x /usr/sbin/nginx ]]; then
+        NGINX_BIN=/usr/sbin/nginx
+      fi
+      if [[ -n \"\$NGINX_BIN\" ]]; then
         printf 'client_max_body_size %s;\n' '$UPLOAD_MAX_BODY_SIZE' | sudo tee /etc/nginx/conf.d/capstone-upload-size.conf >/dev/null
-        sudo nginx -t
+        sudo \"\$NGINX_BIN\" -t
         sudo systemctl reload nginx
       fi
 
