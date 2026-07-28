@@ -13,6 +13,7 @@ test_backend() {
 
   section "Backend tests"
   run npm --prefix "$BACKEND_DIR" ci
+  run npm --prefix "$BACKEND_DIR" run prisma:generate
   run npm --prefix "$BACKEND_DIR" run build
   (
     cd "$BACKEND_DIR"
