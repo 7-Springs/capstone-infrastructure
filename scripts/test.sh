@@ -12,6 +12,7 @@ test_backend() {
   fi
 
   section "Backend tests"
+  run npm --prefix "$BACKEND_DIR" ci
   run npm --prefix "$BACKEND_DIR" run build
   (
     cd "$BACKEND_DIR"
@@ -28,7 +29,10 @@ test_frontend() {
 
   if [[ "$RUN_JEST" == "1" ]]; then
     section "Frontend Jest tests"
+    run npm --prefix "$FRONTEND_DIR" ci
     run npm --prefix "$FRONTEND_DIR" test -- --runInBand
+  elif [[ "$RUN_FRONTEND_BUILD" == "1" || ( "$SKIP_PLAYWRIGHT" != "1" && "$RUN_PLAYWRIGHT" == "1" ) ]]; then
+    run npm --prefix "$FRONTEND_DIR" ci
   fi
 
   if [[ "$RUN_FRONTEND_BUILD" == "1" ]]; then
