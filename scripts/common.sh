@@ -11,6 +11,8 @@ REMOTE_BACKEND_DIR="${REMOTE_BACKEND_DIR:-~/src/capstone-backend}"
 REMOTE_FRONTEND_DIR="${REMOTE_FRONTEND_DIR:-~/src/capstone-frontend}"
 FRONTEND_WEB_ROOT="${FRONTEND_WEB_ROOT:-/var/www/capstone-frontend/browser}"
 UPLOAD_MAX_BODY_SIZE="${UPLOAD_MAX_BODY_SIZE:-25M}"
+NPM_CACHE_DIR="${NPM_CACHE_DIR:-$HOME/.npm-cache}"
+PREBUILT_FRONTEND_DIR="${PREBUILT_FRONTEND_DIR:-}"
 
 TEST_DATABASE_URL="${TEST_DATABASE_URL:-postgresql://capstone_test:capstone_test@localhost:5432/capstone_test?schema=public}"
 RUN_BACKEND="${RUN_BACKEND:-1}"

@@ -30,20 +30,30 @@ deploy_server() {
       cd "$BACKEND_DIR"
       git fetch origin main
       git reset --hard "$SERVER_GIT_REF"
-      npm ci
+      npm ci --cache "$NPM_CACHE_DIR" --prefer-offline
       npm run prisma:generate
       npm run prisma:deploy
       npm run build
       pm2 reload ecosystem.config.cjs --update-env
       pm2 save
 
-      cd "$FRONTEND_DIR"
-      git fetch origin main
-      git reset --hard "$SERVER_GIT_REF"
-      npm ci
-      npm run build
+      if [[ -n "$PREBUILT_FRONTEND_DIR" ]]; then
+        if [[ ! -d "$PREBUILT_FRONTEND_DIR" ]]; then
+          printf 'Prebuilt frontend directory not found: %s\n' "$PREBUILT_FRONTEND_DIR" >&2
+          exit 1
+        fi
+        FRONTEND_SOURCE_DIR="$PREBUILT_FRONTEND_DIR"
+      else
+        cd "$FRONTEND_DIR"
+        git fetch origin main
+        git reset --hard "$SERVER_GIT_REF"
+        npm ci --cache "$NPM_CACHE_DIR" --prefer-offline
+        npm run build
+        FRONTEND_SOURCE_DIR="$FRONTEND_DIR/dist/capstone-frontend/browser"
+      fi
+
       sudo mkdir -p "$FRONTEND_WEB_ROOT"
-      sudo rsync -av --delete dist/capstone-frontend/browser/ "$FRONTEND_WEB_ROOT/"
+      sudo rsync -av --delete "$FRONTEND_SOURCE_DIR/" "$FRONTEND_WEB_ROOT/"
     )
     return
   fi
@@ -71,17 +81,56 @@ deploy_server() {
       cd $REMOTE_BACKEND_DIR
       git fetch origin main
       git reset --hard $SERVER_GIT_REF
-      npm ci
+      npm ci --cache \"\$HOME/.npm-cache\" --prefer-offline
       npm run prisma:generate
       npm run prisma:deploy
       npm run build
       pm2 reload ecosystem.config.cjs --update-env
-      pm2 save
+      pm2 save"
 
+  if [[ -n "$PREBUILT_FRONTEND_DIR" ]]; then
+    if [[ ! -d "$PREBUILT_FRONTEND_DIR" ]]; then
+      printf 'Prebuilt frontend directory not found: %s\n' "$PREBUILT_FRONTEND_DIR" >&2
+      exit 1
+    fi
+
+    section "Uploading prebuilt frontend"
+    remote_upload_dir="/tmp/capstone-frontend-browser-${DEPLOY_USER}-$$"
+    ssh -i "$KEY_COPY" \
+      -o BatchMode=yes \
+      -o ConnectTimeout=30 \
+      -o ServerAliveInterval=10 \
+      -o StrictHostKeyChecking=no \
+      "$DEPLOY_USER@$DEPLOY_HOST" \
+      "rm -rf $remote_upload_dir && mkdir -p $remote_upload_dir"
+    rsync -av --delete \
+      -e "ssh -i $KEY_COPY -o BatchMode=yes -o ConnectTimeout=30 -o ServerAliveInterval=10 -o StrictHostKeyChecking=no" \
+      "$PREBUILT_FRONTEND_DIR/" \
+      "$DEPLOY_USER@$DEPLOY_HOST:$remote_upload_dir/"
+    ssh -i "$KEY_COPY" \
+      -o BatchMode=yes \
+      -o ConnectTimeout=30 \
+      -o ServerAliveInterval=10 \
+      -o StrictHostKeyChecking=no \
+      "$DEPLOY_USER@$DEPLOY_HOST" \
+      "sudo mkdir -p $FRONTEND_WEB_ROOT
+       sudo rsync -av --delete $remote_upload_dir/ $FRONTEND_WEB_ROOT/
+       rm -rf $remote_upload_dir"
+    return
+  fi
+
+  section "Building frontend on $DEPLOY_USER@$DEPLOY_HOST"
+  ssh -i "$KEY_COPY" \
+    -o BatchMode=yes \
+    -o ConnectTimeout=30 \
+    -o ServerAliveInterval=10 \
+    -o StrictHostKeyChecking=no \
+    "$DEPLOY_USER@$DEPLOY_HOST" \
+    "set -Eeuo pipefail
       cd $REMOTE_FRONTEND_DIR
       git fetch origin main
       git reset --hard $SERVER_GIT_REF
-      npm ci
+      npm ci --cache \"\$HOME/.npm-cache\" --prefer-offline
       npm run build
       sudo mkdir -p $FRONTEND_WEB_ROOT
       sudo rsync -av --delete dist/capstone-frontend/browser/ $FRONTEND_WEB_ROOT/"

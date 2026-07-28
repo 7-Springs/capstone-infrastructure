@@ -12,7 +12,7 @@ test_backend() {
   fi
 
   section "Backend tests"
-  run npm --prefix "$BACKEND_DIR" ci
+  run npm --prefix "$BACKEND_DIR" ci --cache "$NPM_CACHE_DIR" --prefer-offline
   run npm --prefix "$BACKEND_DIR" run prisma:generate
   run npm --prefix "$BACKEND_DIR" run build
   (
@@ -30,10 +30,10 @@ test_frontend() {
 
   if [[ "$RUN_JEST" == "1" ]]; then
     section "Frontend Jest tests"
-    run npm --prefix "$FRONTEND_DIR" ci
+    run npm --prefix "$FRONTEND_DIR" ci --cache "$NPM_CACHE_DIR" --prefer-offline
     run npm --prefix "$FRONTEND_DIR" test -- --runInBand
   elif [[ "$RUN_FRONTEND_BUILD" == "1" || ( "$SKIP_PLAYWRIGHT" != "1" && "$RUN_PLAYWRIGHT" == "1" ) ]]; then
-    run npm --prefix "$FRONTEND_DIR" ci
+    run npm --prefix "$FRONTEND_DIR" ci --cache "$NPM_CACHE_DIR" --prefer-offline
   fi
 
   if [[ "$RUN_FRONTEND_BUILD" == "1" ]]; then
