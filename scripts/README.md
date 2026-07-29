@@ -55,3 +55,34 @@ Defaults:
 - `PLAYWRIGHT_WITH_DEPS=0`
 
 The Desktop PEM is copied to `/tmp` with `600` permissions before SSH so the original file does not need to be modified.
+
+## Jenkins CI
+
+Use Jenkins as the normal test/deploy gate for Capstone frontend changes:
+
+```bash
+./scripts/jenkins-capstone-ci.sh trigger
+./scripts/jenkins-capstone-ci.sh status
+./scripts/jenkins-capstone-ci.sh wait
+./scripts/jenkins-capstone-ci.sh fetch lastBuild
+```
+
+The helper defaults to:
+
+- `JENKINS_URL=http://localhost:8080`
+- `JENKINS_JOB=capstone-frontend-ci`
+- `JENKINS_OUTPUT=/home/fenixfire/Desktop/jenkins-output.txt`
+
+Authentication is intentionally kept out of git. Put `username:api-token` in:
+
+```bash
+~/.capstone-jenkins-auth
+```
+
+or export it for the current shell:
+
+```bash
+export JENKINS_AUTH="username:api-token"
+```
+
+Do not commit token-bearing helper scripts. The local `scripts/get-jenkins-output.sh` file is ignored for that reason.
