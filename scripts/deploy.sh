@@ -6,6 +6,25 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 trap cleanup_key_copy EXIT
 
+retry_command() {
+  local attempts="$1"
+  shift
+
+  local attempt
+  for attempt in $(seq 1 "$attempts"); do
+    if "$@"; then
+      return 0
+    fi
+
+    if [[ "$attempt" == "$attempts" ]]; then
+      return 1
+    fi
+
+    printf 'Command failed, retrying in 5 seconds (%s/%s): %s\n' "$attempt" "$attempts" "$*" >&2
+    sleep 5
+  done
+}
+
 deploy_server() {
   if [[ "$SKIP_DEPLOY" == "1" ]]; then
     section "Skipping deploy"
@@ -61,7 +80,7 @@ deploy_server() {
   prepare_key
 
   section "Deploying to $DEPLOY_USER@$DEPLOY_HOST"
-  ssh -i "$KEY_COPY" \
+  retry_command 3 ssh -i "$KEY_COPY" \
     -o BatchMode=yes \
     -o ConnectTimeout=30 \
     -o ServerAliveInterval=10 \
@@ -96,18 +115,18 @@ deploy_server() {
 
     section "Uploading prebuilt frontend"
     remote_upload_dir="/tmp/capstone-frontend-browser-${DEPLOY_USER}-$$"
-    ssh -i "$KEY_COPY" \
+    retry_command 3 ssh -i "$KEY_COPY" \
       -o BatchMode=yes \
       -o ConnectTimeout=30 \
       -o ServerAliveInterval=10 \
       -o StrictHostKeyChecking=no \
       "$DEPLOY_USER@$DEPLOY_HOST" \
       "rm -rf $remote_upload_dir && mkdir -p $remote_upload_dir"
-    rsync -av --delete \
+    retry_command 3 rsync -av --delete \
       -e "ssh -i $KEY_COPY -o BatchMode=yes -o ConnectTimeout=30 -o ServerAliveInterval=10 -o StrictHostKeyChecking=no" \
       "$PREBUILT_FRONTEND_DIR/" \
       "$DEPLOY_USER@$DEPLOY_HOST:$remote_upload_dir/"
-    ssh -i "$KEY_COPY" \
+    retry_command 3 ssh -i "$KEY_COPY" \
       -o BatchMode=yes \
       -o ConnectTimeout=30 \
       -o ServerAliveInterval=10 \
@@ -120,7 +139,7 @@ deploy_server() {
   fi
 
   section "Building frontend on $DEPLOY_USER@$DEPLOY_HOST"
-  ssh -i "$KEY_COPY" \
+  retry_command 3 ssh -i "$KEY_COPY" \
     -o BatchMode=yes \
     -o ConnectTimeout=30 \
     -o ServerAliveInterval=10 \
