@@ -36,15 +36,7 @@ deploy_server() {
     section "Deploying on local server"
     (
       set -Eeuo pipefail
-      NGINX_BIN="$(command -v nginx || true)"
-      if [[ -z "$NGINX_BIN" && -x /usr/sbin/nginx ]]; then
-        NGINX_BIN=/usr/sbin/nginx
-      fi
-      if [[ -n "$NGINX_BIN" ]]; then
-        printf 'client_max_body_size %s;\n' "$UPLOAD_MAX_BODY_SIZE" | sudo tee /etc/nginx/conf.d/capstone-upload-size.conf >/dev/null
-        sudo "$NGINX_BIN" -t
-        sudo systemctl reload nginx
-      fi
+      UPLOAD_MAX_BODY_SIZE="$UPLOAD_MAX_BODY_SIZE" "$SCRIPT_DIR/configure-nginx.sh"
 
       cd "$BACKEND_DIR"
       git fetch origin main
@@ -80,6 +72,14 @@ deploy_server() {
   prepare_key
 
   section "Deploying to $DEPLOY_USER@$DEPLOY_HOST"
+  remote_nginx_configure="/tmp/capstone-configure-nginx-${DEPLOY_USER}-$$.sh"
+  retry_command 3 scp -i "$KEY_COPY" \
+    -o BatchMode=yes \
+    -o ConnectTimeout=30 \
+    -o ServerAliveInterval=10 \
+    -o StrictHostKeyChecking=no \
+    "$SCRIPT_DIR/configure-nginx.sh" \
+    "$DEPLOY_USER@$DEPLOY_HOST:$remote_nginx_configure"
   retry_command 3 ssh -i "$KEY_COPY" \
     -o BatchMode=yes \
     -o ConnectTimeout=30 \
@@ -87,15 +87,8 @@ deploy_server() {
     -o StrictHostKeyChecking=no \
     "$DEPLOY_USER@$DEPLOY_HOST" \
     "set -Eeuo pipefail
-      NGINX_BIN=\"\$(command -v nginx || true)\"
-      if [[ -z \"\$NGINX_BIN\" && -x /usr/sbin/nginx ]]; then
-        NGINX_BIN=/usr/sbin/nginx
-      fi
-      if [[ -n \"\$NGINX_BIN\" ]]; then
-        printf 'client_max_body_size %s;\n' '$UPLOAD_MAX_BODY_SIZE' | sudo tee /etc/nginx/conf.d/capstone-upload-size.conf >/dev/null
-        sudo \"\$NGINX_BIN\" -t
-        sudo systemctl reload nginx
-      fi
+      UPLOAD_MAX_BODY_SIZE='$UPLOAD_MAX_BODY_SIZE' bash $remote_nginx_configure
+      rm -f $remote_nginx_configure
 
       cd $REMOTE_BACKEND_DIR
       git fetch origin main
@@ -162,7 +155,7 @@ smoke_check() {
 
   section "Smoke checks"
   run curl -I https://app.capstone-dev.ddns.net
-  run curl -I https://api.capstone-dev.ddns.net/health
+  run curl -I https://app.capstone-dev.ddns.net/api/health
 }
 
 main() {
