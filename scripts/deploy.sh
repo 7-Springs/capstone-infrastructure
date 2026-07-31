@@ -155,7 +155,7 @@ smoke_check() {
 
   section "Smoke checks"
   run curl -I https://app.capstone-dev.ddns.net
-  run curl -I https://app.capstone-dev.ddns.net/api/health
+  run curl -I https://app.capstone-dev.ddns.net/api/auth/me
 }
 
 main() {
