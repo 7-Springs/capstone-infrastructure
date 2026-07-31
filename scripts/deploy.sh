@@ -108,7 +108,7 @@ deploy_server() {
 
     section "Uploading prebuilt frontend"
     remote_upload_dir="/tmp/capstone-frontend-browser-${DEPLOY_USER}-$$"
-    retry_command 3 ssh -i "$KEY_COPY" \
+    retry_command 8 ssh -i "$KEY_COPY" \
       -o BatchMode=yes \
       -o ConnectTimeout=30 \
       -o ServerAliveInterval=10 \
