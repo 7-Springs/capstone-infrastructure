@@ -67,6 +67,14 @@ Use Jenkins as the normal test/deploy gate for Capstone frontend changes:
 ./scripts/jenkins-capstone-ci.sh fetch lastBuild
 ```
 
+`fetch` and `wait` save the complete console log to `JENKINS_OUTPUT`, then print only the high-signal failure excerpts using:
+
+```bash
+./scripts/summarize-jenkins-output.mjs "$JENKINS_OUTPUT"
+```
+
+Prefer the summary output for deployment feedback loops. Do not paste or review full Jenkins console logs unless the summarizer reports no useful markers and the saved full log is needed as a fallback.
+
 The helper defaults to:
 
 - `JENKINS_URL=http://localhost:8080`

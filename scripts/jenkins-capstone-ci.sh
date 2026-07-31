@@ -5,6 +5,7 @@ JENKINS_URL="${JENKINS_URL:-http://localhost:8080}"
 JENKINS_JOB="${JENKINS_JOB:-capstone-frontend-ci}"
 JENKINS_OUTPUT="${JENKINS_OUTPUT:-/home/fenixfire/Desktop/jenkins-output.txt}"
 JENKINS_AUTH_FILE="${JENKINS_AUTH_FILE:-$HOME/.capstone-jenkins-auth}"
+JENKINS_SUMMARY_SCRIPT="${JENKINS_SUMMARY_SCRIPT:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/summarize-jenkins-output.mjs}"
 
 usage() {
   cat <<'EOF'
@@ -15,6 +16,9 @@ Commands:
   status           Show recent build statuses.
   fetch [build]    Save console output for build, or lastBuild when omitted.
   wait [build]     Poll until build, or lastBuild when omitted, finishes.
+
+Console output is saved in full, but fetch/wait print only a concise failure
+summary so the feedback loop stays readable.
 
 Auth:
   Set JENKINS_AUTH="user:api-token" or create ~/.capstone-jenkins-auth.
@@ -109,7 +113,17 @@ fetch_console() {
   local build="${1:-lastBuild}"
   api_json "$(job_url)/$build/consoleText" -o "$JENKINS_OUTPUT"
   printf 'Saved %s console output to %s.\n' "$build" "$JENKINS_OUTPUT"
-  tail -n 40 "$JENKINS_OUTPUT"
+  summarize_console
+}
+
+summarize_console() {
+  if [[ -f "$JENKINS_SUMMARY_SCRIPT" ]]; then
+    node "$JENKINS_SUMMARY_SCRIPT" "$JENKINS_OUTPUT"
+    return
+  fi
+
+  printf 'Summary script not found at %s. Showing last 80 lines.\n' "$JENKINS_SUMMARY_SCRIPT" >&2
+  tail -n 80 "$JENKINS_OUTPUT"
 }
 
 wait_for_build() {
@@ -129,8 +143,7 @@ wait_for_build() {
 
     if [[ "$building" != "true" ]]; then
       printf '#%s finished: %s\n' "$build" "$result"
-      fetch_console "$build" >/dev/null
-      tail -n 80 "$JENKINS_OUTPUT"
+      fetch_console "$build"
       [[ "$result" == "SUCCESS" ]]
       return
     fi
