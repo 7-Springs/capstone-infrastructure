@@ -63,5 +63,49 @@ if [[ -f "$NGINX_SITE" ]] &&
   rm -f "$tmp_file"
 fi
 
+if [[ -f "$NGINX_SITE" ]] &&
+  sudo grep -q 'server_name app\.capstone-dev\.ddns\.net;' "$NGINX_SITE" &&
+  ! sudo grep -q 'Capstone app-host upload proxy' "$NGINX_SITE"; then
+  tmp_file="$(mktemp)"
+  sudo awk '
+    /server_name app\.capstone-dev\.ddns\.net;/ {
+      in_app_server = 1
+    }
+
+    in_app_server && /^[[:space:]]*server_name / && $0 !~ /app\.capstone-dev\.ddns\.net/ {
+      in_app_server = 0
+    }
+
+    {
+      print
+    }
+
+    in_app_server && !inserted && /^[[:space:]]*index index\.html;[[:space:]]*$/ {
+      print ""
+      print "    # Capstone app-host upload proxy"
+      print "    location /uploads/ {"
+      print "        proxy_pass http://127.0.0.1:3000/uploads/;"
+      print ""
+      print "        proxy_http_version 1.1;"
+      print ""
+      print "        proxy_set_header Host $host;"
+      print "        proxy_set_header X-Real-IP $remote_addr;"
+      print "        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
+      print "        proxy_set_header X-Forwarded-Proto $scheme;"
+      print "    }"
+      inserted = 1
+    }
+
+    END {
+      if (!inserted) {
+        exit 42
+      }
+    }
+  ' "$NGINX_SITE" >"$tmp_file"
+  sudo cp "$NGINX_SITE" "$NGINX_SITE.bak-$(date +%Y%m%d%H%M%S)"
+  sudo cp "$tmp_file" "$NGINX_SITE"
+  rm -f "$tmp_file"
+fi
+
 sudo "$NGINX_BIN" -t
 sudo systemctl reload nginx
