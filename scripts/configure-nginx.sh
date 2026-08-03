@@ -18,6 +18,16 @@ printf 'client_max_body_size %s;\n' "$UPLOAD_MAX_BODY_SIZE" |
 
 if [[ -f "$NGINX_SITE" ]] &&
   sudo grep -q 'server_name app\.capstone-dev\.ddns\.net;' "$NGINX_SITE" &&
+  sudo grep -q 'location /uploads/ {' "$NGINX_SITE"; then
+  tmp_file="$(mktemp)"
+  sudo sed 's/location \/uploads\/ {/location ^~ \/uploads\/ {/' "$NGINX_SITE" >"$tmp_file"
+  sudo cp "$NGINX_SITE" "$NGINX_SITE.bak-$(date +%Y%m%d%H%M%S)"
+  sudo cp "$tmp_file" "$NGINX_SITE"
+  rm -f "$tmp_file"
+fi
+
+if [[ -f "$NGINX_SITE" ]] &&
+  sudo grep -q 'server_name app\.capstone-dev\.ddns\.net;' "$NGINX_SITE" &&
   ! sudo grep -q 'Capstone app-host API proxy' "$NGINX_SITE"; then
   tmp_file="$(mktemp)"
   sudo awk '
@@ -83,7 +93,7 @@ if [[ -f "$NGINX_SITE" ]] &&
     in_app_server && !inserted && /^[[:space:]]*index index\.html;[[:space:]]*$/ {
       print ""
       print "    # Capstone app-host upload proxy"
-      print "    location /uploads/ {"
+      print "    location ^~ /uploads/ {"
       print "        proxy_pass http://127.0.0.1:3000/uploads/;"
       print ""
       print "        proxy_http_version 1.1;"
